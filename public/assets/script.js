@@ -4,7 +4,7 @@
  * Created Date: Wednesday October 23rd 2024
  * Author: Tony Wiedman
  * -----
- * Last Modified: Thu October 24th 2024 12:50:47 
+ * Last Modified: Thu October 24th 2024 9:40:09 
  * Modified By: Tony Wiedman
  * -----
  * Copyright (c) 2024 MolexWorks / Tone Web Design
@@ -106,6 +106,8 @@ function fetchLogs()
 
 //! View the payload in a modal
 //! \param index The index of the log in the logs array
+//! View the payload in a modal
+//! \param index The index of the log in the logs array
 function viewPayload(index)
 {
     fetch('/logs')
@@ -120,6 +122,67 @@ function viewPayload(index)
 
             if (payload)
             {
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'payload-table-container';
+                const table = document.createElement('table');
+                table.className = 'payload-table';
+
+                table.innerHTML = `
+                    <tr>
+                        <th>Account</th>
+                        <th>Device Info</th>
+                        <th>Media Info</th>
+                    </tr>
+                `;
+
+                const row = document.createElement('tr');
+
+                // First column: Account info (Avatar + Username)
+                const avatarUrl = payload.payload.Account?.thumb ? payload.payload.Account.thumb : ''; // Changed Thumb to thumb
+                const username = payload.payload.Account?.title ? payload.payload.Account.title : 'Unknown User';
+
+                const accountCell = document.createElement('td');
+                accountCell.innerHTML = `
+                <div class="user">
+                    <img src="${avatarUrl}" alt="Avatar" style="max-width: 50px; border-radius: 50%;">
+                    <span>${username}</span>
+                </div>
+                `;
+
+                // Second column: Device info (Device name + IP Address)
+                const deviceName = payload.payload.Player?.title ? payload.payload.Player.title : 'Unknown Device';
+                const publicIP = payload.payload.Player?.publicAddress ? payload.payload.Player.publicAddress : 'Unknown IP';
+
+                const deviceCell = document.createElement('td');
+                deviceCell.innerHTML = `
+                    <div class="devices">
+                        <span>${deviceName}</span>
+                        <span>${publicIP}</span>
+                    </div>
+                `;
+
+                // Third column: Media info (Media Type + Media Title)
+                const mediaTitle = payload.payload.Metadata?.title ? payload.payload.Metadata.title : 'Unknown Title';
+                const mediaGrandparentTitle = payload.payload.Metadata?.grandparentTitle ? payload.payload.Metadata.grandparentTitle : '';
+
+                const mediaCell = document.createElement('td');
+                mediaCell.innerHTML = `
+                <div class="media">
+                   ${mediaGrandparentTitle ? "<div class='main-title'>" + mediaGrandparentTitle + "</div>" : ''}
+                   ${!mediaGrandparentTitle ? "<div class='main-title'>" : "<div class='episode'>"}${mediaTitle}</div>
+                </div>
+                `;
+
+                row.appendChild(accountCell);
+                row.appendChild(deviceCell);
+                row.appendChild(mediaCell);
+
+                table.appendChild(row);
+
+                tableContainer.appendChild(table);
+
+                payloadContentTree.appendChild(tableContainer);
+
                 payloadContentTree.appendChild(renderJsonTree(payload));
             }
 
@@ -127,15 +190,18 @@ function viewPayload(index)
         });
 }
 
+
 //! Recursively render a key-value tree for JSON objects
 //! \param json The JSON object to render
 //! \param level The current level of the tree
 //! \returns The rendered tree as a DOM element
-function renderJsonTree(json, level = 0) {
+function renderJsonTree(json, level = 0)
+{
     const container = document.createElement('div');
     container.style.marginLeft = `${level * 20}px`;
 
-    Object.keys(json).forEach(key => {
+    Object.keys(json).forEach(key =>
+    {
         const value = json[key];
         const row = document.createElement('div');
         row.className = 'json-row';
@@ -149,17 +215,18 @@ function renderJsonTree(json, level = 0) {
         const valueElement = document.createElement('span');
         valueElement.className = 'json-value';
 
-        // If the value is an object, recurse to render the child keys
-        if (typeof value === 'object' && value !== null) {
-            valueElement.textContent = '{ }'; // Show as object for now
+        if (typeof value === 'object' && value !== null)
+        {
+            valueElement.textContent = '{ }';
             row.appendChild(keyElement);
             row.appendChild(valueElement);
             container.appendChild(row);
             container.appendChild(renderJsonTree(value, level + 1));
-        } 
-        // Handle thumbnail case (if it's a URL or blob)
-        else if (key === 'thumb') {
-            if (typeof value === 'string' && value.startsWith('http')) {
+        }
+        else if (key === 'thumb')
+        {
+            if (typeof value === 'string' && value.startsWith('http'))
+            {
                 //* Render the image if it's a valid URL
                 const imgElement = document.createElement('img');
                 imgElement.src = value;
@@ -167,7 +234,8 @@ function renderJsonTree(json, level = 0) {
                 imgElement.style.maxWidth = '150px';
                 row.appendChild(keyElement);
                 row.appendChild(imgElement);
-            } else if (value instanceof Blob) {
+            } else if (value instanceof Blob)
+            {
                 //* Handle blob data by converting it to an object URL
                 const imgElement = document.createElement('img');
                 const objectURL = URL.createObjectURL(value);
@@ -179,7 +247,8 @@ function renderJsonTree(json, level = 0) {
             }
             container.appendChild(row);
         }
-        else {
+        else
+        {
             valueElement.textContent = value;
             row.appendChild(keyElement);
             row.appendChild(valueElement);

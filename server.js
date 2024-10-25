@@ -4,7 +4,7 @@
  * Created Date: Monday October 21st 2024
  * Author: Tony Wiedman
  * -----
- * Last Modified: Thu October 24th 2024 12:39:10 
+ * Last Modified: Thu October 24th 2024 9:37:53 
  * Modified By: Tony Wiedman
  * -----
  * Copyright (c) 2024 MolexWorks / Tone Web Design
@@ -58,7 +58,7 @@ function RunProcess(processType, params = [])
 
         const processParams = params.join(' ');
 
-        LogMessage(`[RUN] Process: ${processType}, Params: ${processParams}`, INFO);
+        LogMessage(`[RUN] ${scriptPath} ${processParams}`, INFO);
 
         const process = spawn('python', [scriptPath, ...params], {
             stdio: ['ignore', 'pipe', 'pipe'],
@@ -250,8 +250,35 @@ app.post('/webhook', (req, res) =>
         {
             const payload = ExtractPayload(data, req.headers);
             const event = payload.payload?.event || (payload.Metadata && payload.Metadata.event);
+            const username = payload.payload?.Account?.title || 'Unknown User';
+            const mediaTitle = payload.payload?.Metadata?.title || 'Unknown Media';
+            const grandparentTitle = payload.payload?.Metadata?.grandparentTitle || '';
+            const mediaInfo = grandparentTitle ? `${grandparentTitle} - ${mediaTitle}` : mediaTitle;
 
-            LogMessage(`[EVENT] ${event}`, EVENT, payload);
+            // Handle event-based logging
+            switch (event)
+            {
+                case 'media.play':
+                    LogMessage(`[${event.toUpperCase()}] ${username} started playing ${mediaInfo}`, EVENT, payload);
+                    break;
+                case 'media.pause':
+                    LogMessage(`[${event.toUpperCase()}] ${username} paused ${mediaInfo}`, EVENT, payload);
+                    break;
+                case 'media.resume':
+                    LogMessage(`[${event.toUpperCase()}] ${username} resumed ${mediaInfo}`, EVENT, payload);
+                    break;
+                case 'media.stop':
+                    LogMessage(`[${event.toUpperCase()}] ${username} stopped watching ${mediaInfo}`, EVENT, payload);
+                    break;
+                case 'media.scrobble':
+                    LogMessage(`[${event.toUpperCase()}] ${username} scrobbled ${mediaInfo}`, EVENT, payload);
+                    break;
+                case 'library.new':
+                    LogMessage(`[${event.toUpperCase()}] ${mediaInfo} added to the library`, EVENT, payload);
+                    break;
+                default:
+                    LogMessage(`[${event.toUpperCase()}] Event received: ${username} for media ${mediaInfo}`, EVENT, payload);
+            }
 
             if (event === 'library.new')
             {
@@ -294,6 +321,7 @@ app.post('/webhook', (req, res) =>
         }
     });
 });
+
 
 //! Start the server
 app.listen(PORT, () =>
