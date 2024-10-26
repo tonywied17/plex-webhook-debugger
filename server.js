@@ -4,7 +4,7 @@
  * Created Date: Monday October 21st 2024
  * Author: Tony Wiedman
  * -----
- * Last Modified: Thu October 24th 2024 9:37:53 
+ * Last Modified: Sat October 26th 2024 1:24:32 
  * Modified By: Tony Wiedman
  * -----
  * Copyright (c) 2024 MolexWorks / Tone Web Design
@@ -50,7 +50,14 @@ function RunProcess(processType, params = [])
 
         if (!scriptPath)
         {
-            LogMessage(`Error: No script found for process type: ${processType}`, ERROR);
+            LogMessage(
+                `Error: No script found for process type: ${processType}`,
+                ERROR,
+                null,
+                'System',  // Username for generic system logs
+                'error',   // Event type for errors
+                `Process Error: ${processType}` // Media info as a placeholder
+            );
             return reject(new Error(`No script found for process type: ${processType}`));
         }
 
@@ -58,7 +65,14 @@ function RunProcess(processType, params = [])
 
         const processParams = params.join(' ');
 
-        LogMessage(`[RUN] ${scriptPath} ${processParams}`, INFO);
+        LogMessage(
+            `[RUN] ${scriptPath} ${processParams}`,
+            INFO,
+            null,
+            'System',               // Username for generic system logs
+            'process.start',        // Event type for starting a process
+            `${scriptPath} ${processParams}`
+        );
 
         const process = spawn('python', [scriptPath, ...params], {
             stdio: ['ignore', 'pipe', 'pipe'],
@@ -82,11 +96,25 @@ function RunProcess(processType, params = [])
         {
             if (code === 0)
             {
-                LogMessage(`[DONE] ${processType} Process Finished Successfully`, SUCCESS);
+                LogMessage(
+                    `[DONE] ${processType} Process Finished Successfully`,
+                    SUCCESS,
+                    null,
+                    'System',               // Username for generic system logs
+                    'process.finish',       // Event type for process completion
+                    `${scriptPath} ${processParams}` // Script and params for the process
+                );
                 resolve();
             } else
             {
-                LogMessage(`${processType} Process Failed with exit code: ${code}`, ERROR);
+                LogMessage(
+                    `${processType} Process Failed with exit code: ${code}`,
+                    ERROR,
+                    null,
+                    'System',               // Username for generic system logs
+                    'process.error',        // Event type for process error
+                    `Process: ${processType}, Exit code: ${code}` // Info for the process error
+                );
                 reject(new Error(`${processType} process failed with exit code: ${code}`));
             }
         });
@@ -94,6 +122,7 @@ function RunProcess(processType, params = [])
         process.unref();
     });
 }
+
 
 //! Process the next item in the queue
 function ProcessNextInQueue()
@@ -164,8 +193,7 @@ function ExtractPayload(data, headers)
 }
 
 //! Log a message with color formatting in the console and pass a clean label to logMessages
-function LogMessage(message, color = RESET, payload = null)
-{
+function LogMessage(message, color = RESET, payload = null, username = '', event = '', mediaInfo = '') {
     let logType;
     if (color === INFO) logType = 'INFO';
     else if (color === SUCCESS) logType = 'SUCCESS';
@@ -175,8 +203,19 @@ function LogMessage(message, color = RESET, payload = null)
     else logType = 'ERROR';
 
     console.log(`${color}${message}${RESET}`);
-    logMessages.push({ message, payload, logType });
+
+    //* Push a structured log object with a timestamp to the logMessages array
+    logMessages.push({
+        timestamp: new Date().toISOString(), 
+        message,
+        payload,
+        logType,
+        username,
+        event,
+        mediaInfo,
+    });
 }
+
 
 
 //@ Route Handlers  ----
@@ -249,37 +288,87 @@ app.post('/webhook', (req, res) =>
         try
         {
             const payload = ExtractPayload(data, req.headers);
-            const event = payload.payload?.event || (payload.Metadata && payload.Metadata.event);
+            const event = payload.payload?.event || payload.Metadata?.event || 'unknown';
             const username = payload.payload?.Account?.title || 'Unknown User';
             const mediaTitle = payload.payload?.Metadata?.title || 'Unknown Media';
             const grandparentTitle = payload.payload?.Metadata?.grandparentTitle || '';
             const mediaInfo = grandparentTitle ? `${grandparentTitle} - ${mediaTitle}` : mediaTitle;
 
-            // Handle event-based logging
+            //* Handle event-based logging with structured data
             switch (event)
             {
                 case 'media.play':
-                    LogMessage(`[${event.toUpperCase()}] ${username} started playing ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${username} started playing ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
                     break;
                 case 'media.pause':
-                    LogMessage(`[${event.toUpperCase()}] ${username} paused ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${username} paused ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
                     break;
                 case 'media.resume':
-                    LogMessage(`[${event.toUpperCase()}] ${username} resumed ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${username} resumed ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
                     break;
                 case 'media.stop':
-                    LogMessage(`[${event.toUpperCase()}] ${username} stopped watching ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${username} stopped watching ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
                     break;
                 case 'media.scrobble':
-                    LogMessage(`[${event.toUpperCase()}] ${username} scrobbled ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${username} scrobbled ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
                     break;
                 case 'library.new':
-                    LogMessage(`[${event.toUpperCase()}] ${mediaInfo} added to the library`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] ${mediaInfo} added to the library`,
+                        EVENT,
+                        payload,
+                        'Library System',
+                        event,
+                        mediaInfo
+                    );
                     break;
                 default:
-                    LogMessage(`[${event.toUpperCase()}] Event received: ${username} for media ${mediaInfo}`, EVENT, payload);
+                    LogMessage(
+                        `[${event.toUpperCase()}] Event received: ${username} for media ${mediaInfo}`,
+                        EVENT,
+                        payload,
+                        username,
+                        event,
+                        mediaInfo
+                    );
             }
 
+            //@ Queueing logic for 'library.new' events
             if (event === 'library.new')
             {
                 const currentTime = Date.now();
@@ -291,11 +380,18 @@ app.post('/webhook', (req, res) =>
                     const processType = 'Kometa';
                     const scriptPath = SCRIPT_PATHS[processType];
 
-                    LogMessage(`[QUEUE] Process: ${processType}, Params: ${newProcessParams}`, INFO);
+                    LogMessage(
+                        `[QUEUE] Process: ${processType}, Params: ${newProcessParams}`,
+                        INFO,
+                        null,
+                        'Queue System',             // Username for Queue System
+                        'queue',                    // Event type for logging
+                        `${processType} ${newProcessParams}` // Info for the process queued
+                    );
 
                     //* Push the process to the queue
                     processQueue.push({ processType, scriptPath, params: newProcessParams });
-                    lastProcessTime = currentTime; //* Update last process time (for a custom collections queue delay)
+                    lastProcessTime = currentTime;
 
                     if (!isProcessing)
                     {
@@ -307,7 +403,16 @@ app.post('/webhook', (req, res) =>
                 } else
                 {
                     const timeLeft = QUEUE_DELAY_MS - (currentTime - lastProcessTime);
-                    LogMessage(`[WAIT] Queue delay not met. Wait for ${Math.ceil(timeLeft / 1000)} more seconds`, ERROR);
+
+                    LogMessage(
+                        `[WAIT] Queue delay not met. Wait for ${Math.ceil(timeLeft / 1000)} more seconds`,
+                        ERROR,
+                        null,
+                        'Queue System',                                // Username for Queue System
+                        'wait',                                        // Event type for logging
+                        `${timeLeft}ms until next available queue`     // Info for time remaining
+                    );
+
                     return res.status(429).send('Queue delay not met. Please try again later.');
                 }
             } else
@@ -324,7 +429,13 @@ app.post('/webhook', (req, res) =>
 
 
 //! Start the server
-app.listen(PORT, () =>
-{
-    LogMessage(`Server is running on http://localhost:${PORT}`, DEBUG);
+app.listen(PORT, () => {
+    LogMessage(
+        `Server is running on http://localhost:${PORT}`,
+        DEBUG,
+        null,
+        'System',                   // Username for system messages
+        'server.start',             // Event type for server start
+        `Listening on port ${PORT}` // Media info or additional context
+    );
 });

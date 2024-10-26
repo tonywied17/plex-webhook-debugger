@@ -4,7 +4,7 @@
  * Created Date: Wednesday October 23rd 2024
  * Author: Tony Wiedman
  * -----
- * Last Modified: Thu October 24th 2024 9:40:09 
+ * Last Modified: Sat October 26th 2024 1:24:57 
  * Modified By: Tony Wiedman
  * -----
  * Copyright (c) 2024 MolexWorks / Tone Web Design
@@ -86,13 +86,25 @@ function fetchLogs()
             {
                 const logEntry = document.createElement('div');
 
-                // Apply the class based on the logType (INFO, SUCCESS, WARN, ERROR, etc.)
                 logEntry.className = `log-entry log-${log.logType.trim()}`;
 
+                //* Display the log entry with timestamp, username, event, and media info
                 logEntry.innerHTML = `
-                    <div>${log.message}</div>
-                    ${log.payload ? `<button onclick="viewPayload(${index})">View Payload</button>` : ''}
+                    <div class="log-left">
+                    <div>
+                        <span class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</span>
+                        <span class="log-username">${log.username}</span>
+                        <span class="log-action"> ${log.event.replace('.', ' ')} </span>
+                    </div>
+                        <span class="log-media"> ${log.mediaInfo}</span>
+                    </div>
+                        
+                    <div class="log-right">
+                        ${log.payload ? `<button onclick="viewPayload(${index})">Payload</button>` : ''}
+                        
+                    </div>
                 `;
+
                 logDiv.appendChild(logEntry);
             });
 
@@ -137,7 +149,7 @@ function viewPayload(index)
 
                 const row = document.createElement('tr');
 
-                // First column: Account info (Avatar + Username)
+                //* First column: Account info (Avatar + Username)
                 const avatarUrl = payload.payload.Account?.thumb ? payload.payload.Account.thumb : ''; // Changed Thumb to thumb
                 const username = payload.payload.Account?.title ? payload.payload.Account.title : 'Unknown User';
 
@@ -149,7 +161,7 @@ function viewPayload(index)
                 </div>
                 `;
 
-                // Second column: Device info (Device name + IP Address)
+                //* Second column: Device info (Device name + IP Address)
                 const deviceName = payload.payload.Player?.title ? payload.payload.Player.title : 'Unknown Device';
                 const publicIP = payload.payload.Player?.publicAddress ? payload.payload.Player.publicAddress : 'Unknown IP';
 
@@ -161,7 +173,7 @@ function viewPayload(index)
                     </div>
                 `;
 
-                // Third column: Media info (Media Type + Media Title)
+                //* Third column: Media info (Media Type + Media Title)
                 const mediaTitle = payload.payload.Metadata?.title ? payload.payload.Metadata.title : 'Unknown Title';
                 const mediaGrandparentTitle = payload.payload.Metadata?.grandparentTitle ? payload.payload.Metadata.grandparentTitle : '';
 
@@ -270,23 +282,59 @@ function closePayloadModal()
 
 //@ Process Modal ---
 
+let processIntervalId;
+let processRefreshTime = 2000; // default refresh time
+
+const processAutoRefreshCheckbox = document.getElementById('process-auto-refresh');
+const processRefreshIntervalInput = document.getElementById('process-refresh-interval');
+
+
 //! Open the process status modal and start polling for updates
 function openProcessModal()
 {
     const processModal = document.getElementById('process-modal');
     processModal.classList.add('active');
-
-    const intervalId = setInterval(() =>
-    {
-        fetchProcessStatus();
-
-        const processContent = document.getElementById('process-content');
-        processContent.scrollTop = processContent.scrollHeight;
-    }, 2000);
-
-    // store the interval ID for clearing when modal is closed
-    processModal.dataset.intervalId = intervalId;
+    startProcessInterval();
 }
+
+//! Start the process status interval
+function startProcessInterval()
+{
+    if (processIntervalId) clearInterval(processIntervalId);
+    if (processAutoRefreshCheckbox.checked)
+    {
+        processIntervalId = setInterval(() =>
+        {
+            fetchProcessStatus();
+        }, processRefreshTime);
+    }
+}
+
+//! Event listener for updating process modal refresh interval
+processRefreshIntervalInput.addEventListener('change', () =>
+{
+    const newTime = parseInt(processRefreshIntervalInput.value, 10);
+    if (newTime >= 1000)
+    { //* enforce a minimum of 1 second
+        processRefreshTime = newTime;
+        startProcessInterval();
+    } else
+    {
+        alert('Please enter a value of 1000 ms or higher.');
+    }
+});
+
+//! Event listener for enabling/disabling auto-refresh in process modal
+processAutoRefreshCheckbox.addEventListener('change', () =>
+{
+    if (processAutoRefreshCheckbox.checked)
+    {
+        startProcessInterval();
+    } else
+    {
+        clearInterval(processIntervalId);
+    }
+});
 
 //! Fetch the process status from the server
 function fetchProcessStatus()
@@ -297,10 +345,10 @@ function fetchProcessStatus()
         {
             const processContent = document.getElementById('process-content');
 
-            // check if there's any new output since the last fetch
+            //* check if there's any new output since the last fetch
             if (data !== lastProcessStatus)
             {
-                const newContent = data.replace(lastProcessStatus, ''); // get only new content
+                const newContent = data.replace(lastProcessStatus, ''); //* get only new content
                 const textNode = document.createTextNode(newContent);
                 processContent.appendChild(textNode);
 
@@ -320,8 +368,7 @@ function closeProcessModal()
 {
     const processModal = document.getElementById('process-modal');
     processModal.classList.remove('active');
-
-    clearInterval(processModal.dataset.intervalId);
+    clearInterval(processIntervalId);
     lastProcessStatus = '';
 }
 
@@ -350,7 +397,7 @@ function openSettingsModal()
                             addInputField(form, `SCRIPT_PATHS.${subKey}`, config[key][subKey]);
                         }
 
-                        // Add + and - buttons to show/hide the new script path form
+                        //* Add + and - buttons to show/hide the new script path form
                         const toggleButton = document.createElement('button');
                         toggleButton.type = 'button';
                         toggleButton.textContent = '+ Add Script Path';
@@ -358,7 +405,7 @@ function openSettingsModal()
                         toggleButton.onclick = toggleScriptFields;
                         form.appendChild(toggleButton);
 
-                        // Hidden fields for adding a new script path
+                        //* Hidden fields for adding a new script path
                         const newScriptContainer = document.createElement('div');
                         newScriptContainer.id = 'new-script-container';
                         newScriptContainer.style.display = 'none';
@@ -376,7 +423,7 @@ function openSettingsModal()
                         addScriptButton.textContent = 'Push';
                         addScriptButton.onclick = addNewScriptPath;
 
-                        // Append inputs and add button to the container
+                        //* Append inputs and add button to the container
                         newScriptContainer.appendChild(scriptTypeInput);
                         newScriptContainer.appendChild(scriptPathInput);
                         newScriptContainer.appendChild(addScriptButton);
@@ -424,14 +471,13 @@ function addNewScriptPath()
 
     if (scriptType && scriptPath)
     {
-        // Check if scriptType already exists in the form to avoid duplicates
+        //* Check if scriptType already exists in the form to avoid duplicates
         if (!document.getElementById(`SCRIPT_PATHS.${scriptType}`))
         {
-            // Create the new input field elements
             const form = document.getElementById('settings-form');
             const newFields = document.createDocumentFragment();
 
-            // Create and add the new label and input for the script type
+            //* Create and add the new label and input for the script type
             const label = document.createElement('label');
             label.textContent = `SCRIPT_PATHS.${scriptType}`;
             label.setAttribute('for', `SCRIPT_PATHS.${scriptType}`);
@@ -442,23 +488,23 @@ function addNewScriptPath()
             input.name = `SCRIPT_PATHS.${scriptType}`;
             input.value = scriptPath;
 
-            // Add the label and input to the document fragment
+            //* Add the label and input to the document fragment
             newFields.appendChild(label);
             newFields.appendChild(input);
 
-            // Find the first existing script field
+            //* Find the first existing script field
             const firstScriptField = form.querySelector('input[name^="SCRIPT_PATHS"]');
 
-            // If there's an existing script field, insert before it, otherwise append
+            //* If there's an existing script field, insert before it, otherwise append
             if (firstScriptField)
             {
-                form.insertBefore(newFields, firstScriptField.previousElementSibling); // Insert before the first script field
+                form.insertBefore(newFields, firstScriptField.previousElementSibling); //* Insert before the first script field
             } else
             {
-                form.appendChild(newFields); // Append if there are no existing script paths
+                form.appendChild(newFields); //* Append if there are no existing script paths
             }
 
-            // Clear the input fields after adding
+            //* Reset the input fields
             document.getElementById('newScriptType').value = '';
             document.getElementById('newScriptPath').value = '';
         } else
@@ -563,13 +609,54 @@ function closeSettingsModal()
 
 //@ Initialization, Interval ---
 
+let intervalId;
+let refreshTime = 5000; // default refresh time
+const autoRefreshCheckbox = document.getElementById('auto-refresh');
+const refreshIntervalInput = document.getElementById('refresh-interval');
+
 //! Call fetchQueue and fetchLogs instantly on page load
 fetchQueue();
 fetchLogs();
 
 //! Fetch the queue and logs every 5 seconds
-setInterval(() =>
+function startInterval()
 {
-    fetchQueue();
-    fetchLogs();
-}, 5000);
+    if (intervalId) clearInterval(intervalId); //* clear previous interval if exists
+    if (autoRefreshCheckbox.checked)
+    {
+        intervalId = setInterval(() =>
+        {
+            fetchQueue();
+            fetchLogs();
+        }, refreshTime);
+    }
+}
+
+//! Event listener to update refresh interval
+refreshIntervalInput.addEventListener('change', () =>
+{
+    const newTime = parseInt(refreshIntervalInput.value, 10);
+    if (newTime >= 1000)
+    {
+        refreshTime = newTime;
+        startInterval();
+    } else
+    {
+        alert('Please enter a value of 1000 ms or higher.');
+    }
+});
+
+//! Event listener to enable or disable auto-refresh
+autoRefreshCheckbox.addEventListener('change', () =>
+{
+    if (autoRefreshCheckbox.checked)
+    {
+        startInterval();
+    } else
+    {
+        clearInterval(intervalId);
+    }
+});
+
+//! Start the interval initially
+startInterval();
