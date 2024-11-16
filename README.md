@@ -1,5 +1,11 @@
-# pPlex Webhook Debugger
-app to help manage and debug plex webhooks events and trigger custom actions/processes
+
+
+# Plex Webhook Debugger
+![GitHub repo size](https://img.shields.io/github/repo-size/tonywied17/linux-bin-scripts)
+![GitHub language count](https://img.shields.io/github/languages/top/tonywied17/linux-bin-scripts)
+![GitHub last commit](https://img.shields.io/github/last-commit/tonywied17/linux-bin-scripts)
+
+App to help manage and debug plex webhooks events and trigger custom actions/processes
 
 ## Install
 ```bash
